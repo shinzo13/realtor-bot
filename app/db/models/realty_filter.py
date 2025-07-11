@@ -19,10 +19,12 @@ class RealtyFilter(Base):
     # «Арендная плата за месяц» (min / max)
     min_price: Mapped[int] = mapped_column(Integer)
     max_price: Mapped[int] = mapped_column(Integer)
+    # «Отсутствие залога»
+    no_deposit: Mapped[bool] = mapped_column(Boolean)
     # «Правила» (можно с детьми, можно с животными)
     kids: Mapped[bool] = mapped_column(Boolean)
-    animals: Mapped[bool] = mapped_column(Boolean)
+    pets: Mapped[bool] = mapped_column(Boolean)
     # «Ремонт» (неважно / без ремонта / косметический / евро / дизайнерский)
-    renovation: Mapped[Renovation] = mapped_column(Enum(Renovation))
+    renovation: Mapped[list[Renovation]] = mapped_column(JSON) # TODO kostyl
     # «Слова в описании»
     keywords: Mapped[list[str]] = mapped_column(JSON)
