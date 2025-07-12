@@ -1,2 +1,2 @@
-from renovation import Renovation
-from realty_type import RealtyType
+from .renovation import Renovation
+from .realty_type import RealtyType
