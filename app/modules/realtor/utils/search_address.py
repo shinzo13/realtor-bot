@@ -30,7 +30,7 @@ async def search_address(address: str, results_count: int = 15) -> list[Address]
             return [
                 Address(
                     text=result["address"]["formatted_address"],
-                    tag=tags_formatted.get(result["tags"][0], result["tags"][0]), # TODO debug kostyl
+                    kind=result["tags"][0], # TODO debug kostyl
                 )
                 for result in data["results"]
             ]
