@@ -4,11 +4,7 @@ from app.handlers import user_filters
 import logging
 import asyncio
 import os, sys
-
-from dotenv import load_dotenv #TODO vrode kostyl
-
-load_dotenv()
-
+from app.config import env
 logger = logging.getLogger(__name__)
 
 async def main():
@@ -17,7 +13,7 @@ async def main():
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         handlers=[logging.StreamHandler(sys.stdout)] # костыль для логов в пичарме уберупотом
     )
-    bot = Bot(token=os.getenv("BOT_TOKEN"))
+    bot = Bot(token=env.bot.token.get_secret_value())
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(user_filters.router)
     bot_username = (await bot.me()).username
