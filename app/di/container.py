@@ -4,4 +4,4 @@ from .providers import DatabaseProvider
 
 def setup_di(dp):
     container = make_async_container(DatabaseProvider())
-    setup_dishka(container, dp)
+    setup_dishka(container, dp, auto_inject=True)
