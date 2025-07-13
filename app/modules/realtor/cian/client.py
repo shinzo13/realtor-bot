@@ -1,7 +1,8 @@
 import aiohttp
-from app.db.models import RealtyFilter
+from app.db.models import RealtyFilter, Offer
 from .constants import BASE_URL, HEADERS, RENOVATIONS
 from app.db.enums import RealtyType
+from datetime import datetime, UTC
 
 class CianClient:
     def __init__(self):
@@ -46,11 +47,28 @@ class CianClient:
             query["repair"] = {"type": "terms", "value": [RENOVATIONS[r] for r in realty_filter.renovation] }
         # keywords are not cian-based filter
         return {"jsonQuery": query}
-    async def get_offers(self, filter: RealtyFilter):
-        json_query = await self._query_builder(filter)
+    async def get_offers(self, realty_filter: RealtyFilter) -> list[Offer]:
+        json_query = await self._query_builder(realty_filter)
         async with self.session.post(
                 url = BASE_URL,
                 json = json_query
         ) as resp:
-            return (await resp.json())["data"]["offersSerialized"]
+            offers = [
+                Offer(
+                    offer_id=offer["cianId"],
+                    # title=offer["title"],
+                    info=offer["formattedFullInfo"],
+                    deal_terms=offer["formattedAdditionalInfo"],
+                    description=offer["description"],
+                    price=offer["formattedFullPrice"],
+                    address=offer["geo"]["userInput"],
+                    url=offer["fullUrl"],
+                    photo_url=offer["photos"][0]["fullUrl"],
+                    created_at=datetime.now(UTC),
+                    published_at=datetime.fromtimestamp(offer["addedTimestamp"])
+
+                )
+                for offer in (await resp.json())["data"]["offersSerialized"]
+            ]
+            return offers
 
