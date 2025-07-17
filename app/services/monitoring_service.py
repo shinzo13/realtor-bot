@@ -1,6 +1,5 @@
 import asyncio
 import logging
-
 from app.db.session import sessionmaker
 from app.db.cruds import RealtyFilterCRUD, OfferCRUD, NotificationCRUD
 from app.modules.realtor.cian import CianClient
@@ -61,35 +60,34 @@ class MonitoringService:
             cian_offers = await self.cian_client.get_offers(realty_filter)
             logger.info(f"Found {len(cian_offers)} offers for user {realty_filter.user_id}")
 
-            # Преобразуем в наш формат и фильтруем новые
-            new_offers = []
+            # Сохраняем все объявления если их еще нет в базе
+            offers_to_save = []
             for offer in cian_offers:
                 if not await offer_crud.offer_exists(offer.offer_id):
-                    new_offers.append(offer)
+                    offers_to_save.append(offer)
 
-            if not new_offers:
-                return
+            if offers_to_save:
+                await offer_crud.bulk_create_offers(offers_to_save)
+                logger.info(f"Saved {len(offers_to_save)} new offers to database")
 
-            logger.info(f"Found {len(new_offers)} new offers for user {realty_filter.user_id}")
+            # Создаем уведомления только если первичная проверка завершена
+            if realty_filter.initial_check_completed:
+                notifications_data = []
+                for offer in cian_offers:
+                    # Проверяем был ли оффер уже показан этому пользователю
+                    if not await notification_crud.notification_exists(realty_filter.user_id, offer.offer_id):
+                        notifications_data.append({
+                            'user_id': realty_filter.user_id,
+                            'offer_id': offer.offer_id
+                        })
 
-            # Сохраняем новые объявления
-            await offer_crud.bulk_create_offers(new_offers)
-
-            # Фильтруем по критериям пользователя
-            # filtered_offers = await offer_crud.filter_offers_by_criteria(realty_filter, new_offers)
-
-            # Создаем уведомления
-            notifications_data = []
-            for offer in new_offers:
-                if not await notification_crud.notification_exists(realty_filter.user_id, offer.offer_id):
-                    notifications_data.append({
-                        'user_id': realty_filter.user_id,
-                        'offer_id': offer.offer_id
-                    })
-
-            if notifications_data:
-                await notification_crud.bulk_create_notifications(notifications_data)
-                logger.info(f"Created {len(notifications_data)} notifications for user {realty_filter.user_id}")
+                if notifications_data:
+                    await notification_crud.bulk_create_notifications(notifications_data)
+                    logger.info(f"Created {len(notifications_data)} notifications for user {realty_filter.user_id}")
+                else:
+                    logger.info(f"No new notifications for user {realty_filter.user_id} - all offers already shown")
+            else:
+                logger.info(f"Skipping notifications for user {realty_filter.user_id} - initial check not completed yet")
 
         except Exception as e:
             logger.error(f"Error in _process_filter for user {realty_filter.user_id}: {e}")
