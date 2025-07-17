@@ -1,16 +1,10 @@
 import aiohttp
-from ..common import Address
+from ..common import Address, AddressKind
 # TODO from app.config import env
 headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
 }
 
-tags_formatted = {
-    "locality": "местность",
-    "country": "страна",
-    "province": "город/область",
-    "area": "район",
-}
 async def search_address(address: str, results_count: int = 15) -> list[Address]:
     async with aiohttp.ClientSession(headers=headers, raise_for_status=True) as session:
         async with session.post(
@@ -31,7 +25,7 @@ async def search_address(address: str, results_count: int = 15) -> list[Address]
             return [
                 Address(
                     text=result["address"]["formatted_address"],
-                    kind=result["tags"][0], # TODO debug kostyl
+                    kind=result["tags"][0]
                 )
                 for result in data["results"]
             ]
