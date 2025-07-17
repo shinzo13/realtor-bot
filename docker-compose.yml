@@ -1,0 +1,12 @@
+services:
+  bot:
+    build: .
+    container_name: realtor-bot
+    volumes:
+      - ./data:/app/data
+      - ./dev.db:/app/dev.db
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    restart: unless-stopped
