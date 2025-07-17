@@ -4,25 +4,46 @@ from .constants import BASE_URL, HEADERS, RENOVATIONS
 from app.db.enums import RealtyType
 from datetime import datetime, UTC
 
+import logging
+logger = logging.getLogger(__name__)
+
 class CianClient:
     def __init__(self):
         self.session = aiohttp.ClientSession(headers = HEADERS)
 
-    async def _get_address_code(self, address: str, address_kind: str):
+    async def _get_address_codes(self, address: str, address_kind: str) -> dict:
+        async with self.session.get(
+            url="https://api.cian.ru/geo/v1/geocode-cached",
+            params={"request":f"Россия, {address}"}
+        ) as resp:
+            data = await resp.json()
+            coordinates = data["items"][0]["coordinates"]
+            lat, lng = coordinates[1], coordinates[0]
+            true_kind = data["items"][0]["kind"]
+            if true_kind != address_kind:
+                logger.warning(f"True address kind {true_kind} does not match saved address kind {address_kind}")
+                address_kind = true_kind
         async with self.session.post(
             url="https://api.cian.ru/geo/v1/geocoded-for-search/",
             json={
-                "address":address,
-                "kind":address_kind
+                "address":f"Россия, {address}",
+                "kind":address_kind,
+                "lat": lat,
+                "lng": lng
             }
         ) as resp:
             data = await resp.json()
-            print(data)
-
+            region_id = data["details"][0]["id"]
+            query_patch = {"region": {"type": "terms", "value": [region_id]}}
+            if len(data["details"]) > 1:
+                geo_id = data["details"][-1]["id"]
+                query_patch["geo"] = {"type": "geo", "value": [{"type": address_kind, "id": geo_id}]}
+            return query_patch
     async def _query_builder(self, realty_filter: RealtyFilter) -> dict:
         query = dict()
         query["engine_version"] = { "type":"term", "value":2 }
         query["currency"] = {"type": "term", "value": 2}
+        query["for_day"] = {"type": "term", "value": "!1"}
         if realty_filter.realty_type == RealtyType.FLAT:
             query["_type"] = "flatrent"
             query["room"] = { "type":"terms", "value":realty_filter.rooms }
@@ -34,7 +55,9 @@ class CianClient:
         else:
             raise TypeError("Unknown realty type")
 
-
+        # хехехе какое костылище хехехе хе
+        query_patch = await self._get_address_codes(realty_filter.address, realty_filter.address_kind)
+        query.update(query_patch)
 
         query["price"] = { "type":"range", "value": {"gte": realty_filter.min_price, "lte": realty_filter.max_price} }
         if realty_filter.no_deposit:
