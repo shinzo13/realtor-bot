@@ -2,9 +2,11 @@ import asyncio
 import logging
 
 from app.db.session import sessionmaker
-from app.db.cruds import NotificationCRUD
+from app.db.cruds import NotificationCRUD, OfferCRUD
+from sqlalchemy.orm import selectinload
+from sqlalchemy import select
 
-from app.db.models import Offer
+from app.db.models import Offer, Notification
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +38,8 @@ class NotificationService:
         async with sessionmaker() as session:
             notification_crud = NotificationCRUD(session)
 
-            # Получаем неотправленные уведомления
-            notifications = await notification_crud.get_pending_notifications(limit=50)
+            # Получаем неотправленные уведомления с предзагруженными данными offer
+            notifications = await notification_crud.get_pending_notifications_with_offers(limit=50)
 
             for notification in notifications:
                 try:
@@ -76,16 +78,17 @@ class NotificationService:
         """Форматировать сообщение об объявлении"""
         message = f"🏠 <b>Новое объявление!</b>\n\n"
         # message += f"<b>{offer.title}</b>\n"
-        message += f"<b>{offer.info}</b>\n"
-        message += f"💰 <i>{offer.price} ({offer.deal_terms})</i>\n"
+        message += f"<b>{offer.info}</b>\n\n"
+        message += f"💰 <i>{offer.price}</i>\n"
 
-        message += f"📍 {offer.address}\n\n"
-
+        message += f"📍 <code>{offer.address}</code>\n\n"
+        message += f"📝 <b>Дополнительная информация:</b> <i>{offer.deal_terms}</i>\n\n"
         # if offer.description and len(offer.description) > 0:
         #     # Обрезаем описание если слишком длинное
         #     desc = offer.description[:200] + "..." if len(offer.description) > 200 else offer.description
         #     message += f"\n📝 {desc}\n"
-        message += f"<blockquote expandable>{offer.description}</blockquote>\n\n"
+        if offer.description:
+            message += f"<blockquote expandable>{offer.description[:500]}...</blockquote>\n\n"
 
         message += f"\n🔗 <a href='{offer.url}'>Смотреть на ЦИАН</a>"
 

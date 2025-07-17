@@ -33,6 +33,8 @@ class RealtyFilter(Base):
     renovation: Mapped[List[Renovation]] = mapped_column(JSON, default=list)
     # Ключевые слова
     keywords: Mapped[List[str]] = mapped_column(JSON, default=list)
+    # Флаг для отслеживания первичной проверки объявлений
+    initial_check_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped["User"] = relationship(back_populates="realty_filter", uselist=False)
 

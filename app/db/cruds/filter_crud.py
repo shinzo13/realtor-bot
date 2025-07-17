@@ -30,7 +30,8 @@ class RealtyFilterCRUD:
             'kids': kwargs.get('kids', False),
             'pets': kwargs.get('pets', False),
             'renovation': kwargs.get('renovation', []),
-            'keywords': kwargs.get('keywords', [])
+            'keywords': kwargs.get('keywords', []),
+            'initial_check_completed': kwargs.get('initial_check_completed', False)
         }
 
         realty_filter = RealtyFilter(**filter_data)
@@ -81,3 +82,12 @@ class RealtyFilterCRUD:
         stmt = select(RealtyFilter).where(RealtyFilter.realty_type == realty_type)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def mark_initial_check_completed(self, user_id: int) -> bool:
+        """Отметить что первичная проверка объявлений завершена"""
+        realty_filter = await self.get_filter(user_id)
+        if realty_filter:
+            realty_filter.initial_check_completed = True
+            await self.session.commit()
+            return True
+        return False

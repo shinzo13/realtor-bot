@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
 from app.db.models import Notification
 from typing import List, Dict, Any
 from datetime import datetime, UTC
@@ -27,6 +28,18 @@ class NotificationCRUD:
         """Получить неотправленные уведомления"""
         stmt = (
             select(Notification)
+            .where(Notification.is_sent == False)
+            .order_by(Notification.created_at.asc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_pending_notifications_with_offers(self, limit: int = 100) -> List[Notification]:
+        """Получить неотправленные уведомления с предзагруженными данными об объявлениях"""
+        stmt = (
+            select(Notification)
+            .options(selectinload(Notification.offer))  # Предзагружаем связанный offer
             .where(Notification.is_sent == False)
             .order_by(Notification.created_at.asc())
             .limit(limit)
